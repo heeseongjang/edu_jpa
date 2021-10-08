@@ -4,6 +4,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import java.util.List;
 import java.util.Set;
 
@@ -102,42 +105,68 @@ public class JpaMain {
 //
 //            member.getHomeAddress().setCity("newCity");
 
-            Member member = new Member();
-            member.setUsername("member1");
-            member.setHomeAddress(new Address("homeCity", "street1", "zipcode"));
+//            Member member = new Member();
+//            member.setUsername("member1");
+//            member.setHomeAddress(new Address("homeCity", "street1", "zipcode"));
+//
+//            member.getFavoriteFoods().add("chicken");
+//            member.getFavoriteFoods().add("pizza");
+//
+//            member.getAddressHistory().add(new AddressEntity("old1", "street1", "zipcode"));
+//            member.getAddressHistory().add(new AddressEntity("old2", "street1", "zipcode"));
+//
+//            em.persist(member);
+//
+//            em.flush();
+//            em.clear();
+//
+//            System.out.println("++++++++++ START +++++++");
+//            //컬렉션들은 다 지연로딩(Address는 같이 불러옴 속성이라)
+//            Member findMember = em.find(Member.class, member.getId());
+////            List<Address> addressHistory = findMember.getAddressHistory();
+////            for (Address address : addressHistory) {
+////                System.out.println("address = " + address.getCity());
+////            }
+////            Set<String> favoriteFoods = findMember.getFavoriteFoods();
+////            for (String favoriteFood : favoriteFoods) {
+////                System.out.println("favorite food = " + favoriteFood);
+////            }
+//
+//            Address oldAddress = findMember.getHomeAddress();
+//            findMember.setHomeAddress(new Address("newCity", oldAddress.getStreet(), oldAddress.getZipcode()));
+//
+//            findMember.getFavoriteFoods().remove("chicken");
+//            findMember.getFavoriteFoods().add("hansik");
+//
+//            System.out.println("++++++++++ ADDRESS +++++++");
+//            findMember.getAddressHistory().remove(new AddressEntity("old1", "street1", "zipcode"));
+//            findMember.getAddressHistory().add(new AddressEntity("newCity1", "street1", "zipcode"));
 
-            member.getFavoriteFoods().add("chicken");
-            member.getFavoriteFoods().add("pizza");
 
-            member.getAddressHistory().add(new AddressEntity("old1", "street1", "zipcode"));
-            member.getAddressHistory().add(new AddressEntity("old2", "street1", "zipcode"));
+            //Entity 대상으로 한다!  -> 객체지향 SQL
+            List<Member> result = em.createQuery(
+                    "SELECT m FROM Member m " +
+                            "WHERE m.username LIKE '%kim%'",
+                    Member.class
+            ).getResultList();
 
-            em.persist(member);
+            for(Member member : result){
+                System.out.println(member.getId());
+            }
 
-            em.flush();
-            em.clear();
+            //복잡성 -> QueryDSL을 사용하면 됨!
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<Member> query = cb.createQuery(Member.class);
+            Root<Member> from = query.from(Member.class);
 
-            System.out.println("++++++++++ START +++++++");
-            //컬렉션들은 다 지연로딩(Address는 같이 불러옴 속성이라)
-            Member findMember = em.find(Member.class, member.getId());
-//            List<Address> addressHistory = findMember.getAddressHistory();
-//            for (Address address : addressHistory) {
-//                System.out.println("address = " + address.getCity());
-//            }
-//            Set<String> favoriteFoods = findMember.getFavoriteFoods();
-//            for (String favoriteFood : favoriteFoods) {
-//                System.out.println("favorite food = " + favoriteFood);
-//            }
+            CriteriaQuery<Member> cq = query.select(from).where(cb.equal(from.get("usrname"), "kim"));
+            List<Member> resultList = em.createQuery(cq).getResultList();
 
-            Address oldAddress = findMember.getHomeAddress();
-            findMember.setHomeAddress(new Address("newCity", oldAddress.getStreet(), oldAddress.getZipcode()));
+            //native sql -> 잘 사용 안하고 SpringjdbcTemplete사용함(영속성 컨텍스트 flush해줘야함)
+            em.createNativeQuery("SELECT MEMBER_ID, CITY, STREET FROM MEMBER", Member.class).getResultList();
 
-            findMember.getFavoriteFoods().remove("chicken");
-            findMember.getFavoriteFoods().add("hansik");
 
-            System.out.println("++++++++++ ADDRESS +++++++");
-            findMember.getAddressHistory().remove(new AddressEntity("old1", "street1", "zipcode"));
-            findMember.getAddressHistory().add(new AddressEntity("newCity1", "street1", "zipcode"));
+
 
             tx.commit();
         } catch (Exception e) {
